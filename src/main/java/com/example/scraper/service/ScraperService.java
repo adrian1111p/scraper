@@ -26,6 +26,13 @@ public class ScraperService {
         runScraper(properties.getInputFolder(), properties.getOutputFile());
     }
 
+    /**
+     * Public method for testing or external usage using configured paths.
+     */
+    public void runScraper() throws IOException {
+        runScraper(properties.getInputFolder(), properties.getOutputFile());
+    }
+
     public void runScraper(String inputFolder, String outputFile) throws IOException {
         System.out.println("➡️ Running scraper...");
         Path inputPath = Paths.get(inputFolder);
@@ -63,33 +70,28 @@ public class ScraperService {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath.toFile(), StandardCharsets.UTF_8))) {
             writer.write("📂 Input folder: " + inputFolder + "\n");
             writer.write("📄 Output file: " + outputFile + "\n");
-            writer.write("🧾 Found " + collectedFiles.size() + " files.\n\n");
-            writer.write("📁 Tree Structure:\n\n");
+            writer.write("🧾 Found " + collectedFiles.size() + " file(s).\n\n");
+            writer.write("📁 Tree Structure:\n");
 
             generateTreeView(writer, treeMap, inputPath);
 
             writer.write("\n📦 Merged Content:\n\n");
 
             for (Path file : collectedFiles) {
-                writer.write("------ next text file. ------\n\n");
-                writer.write("/* ==== " + file.toAbsolutePath() + " ==== */\n\n");
-
-                List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
-                for (String line : lines) {
-                    writer.write(line + "\n");
-                }
-                writer.write("\n");
+                writer.write("/* ==== " + file.toAbsolutePath() + " ==== */\n");
+                Files.lines(file, StandardCharsets.UTF_8).forEach(line -> {
+                    try {
+                        writer.write(line);
+                        writer.newLine();
+                    } catch (IOException e) {
+                        System.err.println("⚠️ Failed to write line: " + e.getMessage());
+                    }
+                });
+                writer.write("\n------ next text file. ------\n\n");
             }
         }
 
         System.out.println("✅ Scraper completed.");
-    }
-
-    /**
-     * Public method for testing or external usage using configured paths.
-     */
-    public void runScraper() throws IOException {
-        runScraper(properties.getInputFolder(), properties.getOutputFile());
     }
 
     private void addToTree(Map<Path, List<FileNode>> map, Path path, boolean isDir, long size) {
@@ -102,7 +104,9 @@ public class ScraperService {
         String filename = path.getFileName().toString();
         boolean matches = properties.getIncludeExtensions().stream().anyMatch(filename::endsWith);
         boolean notExcludedFolder = properties.getExcludeFolders().stream().noneMatch(path.toString()::contains);
-        boolean notExcludedFile = properties.getExcludeFilePatterns().stream().noneMatch(p -> filename.toLowerCase().matches(p.replace("*", ".*").replace("?", ".")));
+        boolean notExcludedFile = properties.getExcludeFilePatterns().stream().noneMatch(p ->
+                filename.toLowerCase().matches(p.replace("*", ".*").replace("?", "."))
+        );
 
         if (!matches) {
             System.out.println("❌ Skipped (extension): " + path);
@@ -136,8 +140,7 @@ public class ScraperService {
             FileNode node = children.get(i);
             boolean last = (i == children.size() - 1);
             String treeLine = TreeGenerator.generateTree(List.of(), node, depth + 1, last);
-            writer.write(treeLine);
-
+            writer.write(treeLine); // ❌ Don't add extra line
             if (node.isDirectory()) {
                 prefixStack.push(last ? "    " : "│   ");
                 walkTree(writer, map, current.resolve(node.getName()), depth + 1, last, prefixStack);
