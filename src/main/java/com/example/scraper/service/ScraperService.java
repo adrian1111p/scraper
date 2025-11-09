@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
@@ -36,13 +37,13 @@ public class ScraperService {
         }
 
         Map<Path, List<FileNode>> treeMap = new TreeMap<>();
-        List<String> collectedContent = new ArrayList<>();
+        List<Path> collectedFiles = new ArrayList<>();
 
         Files.walkFileTree(inputPath, new SimpleFileVisitor<>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (shouldInclude(file)) {
-                    collectedContent.addAll(readFileContent(file));
+                    collectedFiles.add(file);
                     addToTree(treeMap, file, false, file.toFile().length());
                 }
                 return FileVisitResult.CONTINUE;
@@ -59,17 +60,25 @@ public class ScraperService {
             }
         });
 
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath.toFile()))) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath.toFile(), StandardCharsets.UTF_8))) {
             writer.write("📂 Input folder: " + inputFolder + "\n");
             writer.write("📄 Output file: " + outputFile + "\n");
-            writer.write("🧾 Found " + collectedContent.size() + " files.\n\n");
+            writer.write("🧾 Found " + collectedFiles.size() + " files.\n\n");
             writer.write("📁 Tree Structure:\n\n");
 
             generateTreeView(writer, treeMap, inputPath);
 
             writer.write("\n📦 Merged Content:\n\n");
-            for (String line : collectedContent) {
-                writer.write(line + "\n");
+
+            for (Path file : collectedFiles) {
+                writer.write("------ next text file. ------\n\n");
+                writer.write("/* ==== " + file.toAbsolutePath() + " ==== */\n\n");
+
+                List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+                for (String line : lines) {
+                    writer.write(line + "\n");
+                }
+                writer.write("\n");
             }
         }
 
@@ -96,13 +105,13 @@ public class ScraperService {
         boolean notExcludedFile = properties.getExcludeFilePatterns().stream().noneMatch(p -> filename.toLowerCase().matches(p.replace("*", ".*").replace("?", ".")));
 
         if (!matches) {
-            System.out.println("\u274C Skipped (extension): " + path);
+            System.out.println("❌ Skipped (extension): " + path);
         }
         if (!notExcludedFolder) {
-            System.out.println("\u274C Skipped (excluded folder): " + path);
+            System.out.println("❌ Skipped (excluded folder): " + path);
         }
         if (!notExcludedFile) {
-            System.out.println("\u274C Skipped (excluded file): " + path);
+            System.out.println("❌ Skipped (excluded file): " + path);
         }
 
         return matches && notExcludedFolder && notExcludedFile;
@@ -110,15 +119,6 @@ public class ScraperService {
 
     private boolean shouldExclude(Path dir) {
         return properties.getExcludeFolders().stream().anyMatch(dir.toString()::contains);
-    }
-
-    private List<String> readFileContent(Path file) {
-        try {
-            return Files.readAllLines(file);
-        } catch (IOException e) {
-            System.err.println("⚠️ Failed to read file: " + file);
-            return Collections.emptyList();
-        }
     }
 
     private void generateTreeView(BufferedWriter writer, Map<Path, List<FileNode>> treeMap, Path root) throws IOException {
