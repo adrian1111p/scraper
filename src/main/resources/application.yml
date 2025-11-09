@@ -44,6 +44,7 @@ scraper:
     - mm
     - rtf
   exclude-folders:
+    - build
     - Builds
     - Library
     - Logs
@@ -71,4 +72,7 @@ scraper:
     - "docker-compose.override.yml"
     - ".*.bak"
     - ".*.png"
+    - "*.log"
+    - "*.tmp"
   exclude-pattern-case-sensitive: false
+  run-on-startup: true
