@@ -1,0 +1,74 @@
+scraper:
+  # input-folder: D:/Site/brain/itksnap-master
+  # output-file: D:/Site/brain/itksnap-master.txt
+  # input-folder: D:/synapses
+  # output-file: D:/Site/apass/synapses.txt
+  # input-folder: D:/Site/apass/task-manager-ai-hero/task-manager-backend
+  # output-file: D:/Site/apass/task-manager-ai-hero/task-manager-backend.txt
+  # input-folder: D:/Site/apass/task-manager
+  # output-file: D:/Site/apass/task-manager-ai-hero-doc/task-manager.txt
+  input-folder: D:/Site/scraper
+  output-file: D:/Site/apass/scraper/scraper.txt
+  include-extensions:
+    - java
+    - c
+    - cs
+    - cpp
+    - cxx
+    - txx
+    - hxx
+    - sh
+    - cc
+    - shader
+    - js
+    - html
+    - tcl
+    - ts
+    - tsx
+    - py
+    - xml
+    - txt
+    - json
+    - md
+    - yml
+    - yaml
+    - css
+    - scss
+    - html
+    - conf
+    - env
+    - prod
+    - gitignore
+    - h
+    - m
+    - mm
+    - rtf
+  exclude-folders:
+    - Builds
+    - Library
+    - Logs
+    - obj
+    - Temp
+    - UserSettings
+    - Packages
+    - target
+    - bin
+    - .git
+    - node_modules
+    - .next
+    - .idea
+    - .vscode
+    - .vs
+    - obj
+    - .venv
+    - public
+    - .mvn
+    - data
+  exclude-file-patterns:
+    - "*lock.json"
+    - "yarn.lock"
+    - "*.spec.ts"
+    - "docker-compose.override.yml"
+    - ".*.bak"
+    - ".*.png"
+  exclude-pattern-case-sensitive: false
