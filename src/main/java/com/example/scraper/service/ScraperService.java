@@ -21,20 +21,20 @@ public class ScraperService {
 
     private final ScraperProperties properties;
 
+    private static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("win");
+
     @PostConstruct
     public void runOnStartup() throws IOException {
         runScraper(properties.getInputFolder(), properties.getOutputFile());
     }
 
-    /**
-     * Public method for testing or external usage using configured paths.
-     */
     public void runScraper() throws IOException {
         runScraper(properties.getInputFolder(), properties.getOutputFile());
     }
 
     public void runScraper(String inputFolder, String outputFile) throws IOException {
-        System.out.println("➡️ Running scraper...");
+        System.out.println("➡️ Running scraper on " + (IS_WINDOWS ? "Windows" : "Linux/Mac") + "...");
+
         Path inputPath = Paths.get(inputFolder);
         Path outputPath = Paths.get(outputFile);
 
@@ -68,8 +68,8 @@ public class ScraperService {
         });
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath.toFile(), StandardCharsets.UTF_8))) {
-            writer.write("📂 Input folder: " + inputFolder + "\n");
-            writer.write("📄 Output file: " + outputFile + "\n");
+            writer.write("📂 Input folder: " + inputPath.toAbsolutePath() + "\n");
+            writer.write("📄 Output file: " + outputPath.toAbsolutePath() + "\n");
             writer.write("🧾 Found " + collectedFiles.size() + " file(s).\n\n");
             writer.write("📁 Tree Structure:\n");
 
@@ -101,28 +101,25 @@ public class ScraperService {
     }
 
     private boolean shouldInclude(Path path) {
-        String filename = path.getFileName().toString();
-        boolean matches = properties.getIncludeExtensions().stream().anyMatch(filename::endsWith);
-        boolean notExcludedFolder = properties.getExcludeFolders().stream().noneMatch(path.toString()::contains);
-        boolean notExcludedFile = properties.getExcludeFilePatterns().stream().noneMatch(p ->
-                filename.toLowerCase().matches(p.replace("*", ".*").replace("?", "."))
-        );
+        String filename = path.getFileName().toString().toLowerCase();
+        boolean matches = properties.getIncludeExtensions().stream()
+                .anyMatch(ext -> filename.endsWith("." + ext.toLowerCase()));
 
-        if (!matches) {
-            System.out.println("❌ Skipped (extension): " + path);
-        }
-        if (!notExcludedFolder) {
-            System.out.println("❌ Skipped (excluded folder): " + path);
-        }
-        if (!notExcludedFile) {
-            System.out.println("❌ Skipped (excluded file): " + path);
-        }
+        boolean notExcludedFolder = properties.getExcludeFolders().stream()
+                .noneMatch(folder -> path.toString().toLowerCase().contains(FileSystems.getDefault().getSeparator() + folder.toLowerCase()));
+
+        boolean notExcludedFile = properties.getExcludeFilePatterns().stream().noneMatch(p -> {
+            String regex = p.replace(".", "\\.").replace("*", ".*").replace("?", ".");
+            return filename.matches(properties.isExcludePatternCaseSensitive() ? regex : regex.toLowerCase());
+        });
 
         return matches && notExcludedFolder && notExcludedFile;
     }
 
     private boolean shouldExclude(Path dir) {
-        return properties.getExcludeFolders().stream().anyMatch(dir.toString()::contains);
+        String dirStr = dir.toString().toLowerCase();
+        return properties.getExcludeFolders().stream()
+                .anyMatch(folder -> dirStr.contains(FileSystems.getDefault().getSeparator() + folder.toLowerCase()));
     }
 
     private void generateTreeView(BufferedWriter writer, Map<Path, List<FileNode>> treeMap, Path root) throws IOException {
@@ -140,7 +137,7 @@ public class ScraperService {
             FileNode node = children.get(i);
             boolean last = (i == children.size() - 1);
             String treeLine = TreeGenerator.generateTree(List.of(), node, depth + 1, last);
-            writer.write(treeLine); // ❌ Don't add extra line
+            writer.write(treeLine);
             if (node.isDirectory()) {
                 prefixStack.push(last ? "    " : "│   ");
                 walkTree(writer, map, current.resolve(node.getName()), depth + 1, last, prefixStack);
