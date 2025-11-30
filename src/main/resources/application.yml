@@ -7,10 +7,10 @@ scraper:
   # output-file: D:/Site/apass/task-manager-ai-hero/task-manager-backend.txt
   # input-folder: D:/Site/apass/task-manager
   # output-file: D:/Site/apass/task-manager-ai-hero-doc/task-manager.txt
-  input-folder: D:/Site/scraper
-  output-file: D:/Site/apass/scraper/scraper.txt
-  # input-folder: D:/Site/ai-finance-system
-  # output-file: D:/Site/apass/scraper/ai-finance-system.txt
+  # input-folder: D:/Site/scraper
+  # output-file: D:/Site/apass/scraper/scraper.txt
+  input-folder: D:/Site/ai-finance-system
+  output-file: D:/Site/apass/scraper/ai-finance-system.txt
   include-extensions:
     - java
     - c
@@ -67,6 +67,10 @@ scraper:
     - public
     - .mvn
     - data
+    - plugins
+    - png
+    - pdf
+    - csv
   exclude-file-patterns:
     - "*lock.json"
     - "yarn.lock"

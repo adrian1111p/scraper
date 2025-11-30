@@ -9,6 +9,7 @@ import java.util.List;
 @Component
 @ConfigurationProperties(prefix = "scraper")
 public class ScraperProperties {
+
     private String inputFolder;
     private String outputFile;
     private List<String> includeExtensions;
@@ -16,53 +17,29 @@ public class ScraperProperties {
     private List<String> excludeFilePatterns;
     private boolean excludePatternCaseSensitive = false;
 
-    public String getInputFolder() {
-        return inputFolder;
-    }
+    // NEW FIELD
+    private boolean runOnStartup = true;
 
-    public void setInputFolder(String inputFolder) {
-        this.inputFolder = inputFolder;
-    }
+    public String getInputFolder() { return inputFolder; }
+    public void setInputFolder(String inputFolder) { this.inputFolder = inputFolder; }
 
-    public String getOutputFile() {
-        return outputFile;
-    }
+    public String getOutputFile() { return outputFile; }
+    public void setOutputFile(String outputFile) { this.outputFile = outputFile; }
 
-    public void setOutputFile(String outputFile) {
-        this.outputFile = outputFile;
-    }
+    public List<String> getIncludeExtensions() { return includeExtensions; }
+    public void setIncludeExtensions(List<String> includeExtensions) { this.includeExtensions = includeExtensions; }
 
-    public List<String> getIncludeExtensions() {
-        return includeExtensions;
-    }
+    public List<String> getExcludeFolders() { return excludeFolders; }
+    public void setExcludeFolders(List<String> excludeFolders) { this.excludeFolders = excludeFolders; }
 
-    public void setIncludeExtensions(List<String> includeExtensions) {
-        this.includeExtensions = includeExtensions;
-    }
+    public List<String> getExcludeFilePatterns() { return excludeFilePatterns; }
+    public void setExcludeFilePatterns(List<String> excludeFilePatterns) { this.excludeFilePatterns = excludeFilePatterns; }
 
-    public List<String> getExcludeFolders() {
-        return excludeFolders;
-    }
+    public boolean isExcludePatternCaseSensitive() { return excludePatternCaseSensitive; }
+    public void setExcludePatternCaseSensitive(boolean excludePatternCaseSensitive) { this.excludePatternCaseSensitive = excludePatternCaseSensitive; }
 
-    public void setExcludeFolders(List<String> excludeFolders) {
-        this.excludeFolders = excludeFolders;
-    }
-
-    public List<String> getExcludeFilePatterns() {
-        return excludeFilePatterns;
-    }
-
-    public void setExcludeFilePatterns(List<String> excludeFilePatterns) {
-        this.excludeFilePatterns = excludeFilePatterns;
-    }
-
-    public boolean isExcludePatternCaseSensitive() {
-        return excludePatternCaseSensitive;
-    }
-
-    public void setExcludePatternCaseSensitive(boolean excludePatternCaseSensitive) {
-        this.excludePatternCaseSensitive = excludePatternCaseSensitive;
-    }
+    public boolean isRunOnStartup() { return runOnStartup; }
+    public void setRunOnStartup(boolean runOnStartup) { this.runOnStartup = runOnStartup; }
 
     @PostConstruct
     public void debug() {
@@ -72,6 +49,7 @@ public class ScraperProperties {
         System.out.println("  extensions: " + includeExtensions);
         System.out.println("  exclude folders: " + excludeFolders);
         System.out.println("  exclude file patterns: " + excludeFilePatterns);
-        System.out.println("  pattern case-sensitive: " + excludePatternCaseSensitive);
+        System.out.println("  run on startup: " + runOnStartup);
+        System.out.println("  case-sensitive patterns: " + excludePatternCaseSensitive);
     }
 }

@@ -15,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +26,9 @@ public class ScraperService {
 
     @PostConstruct
     public void runOnStartup() throws IOException {
-        runScraper(properties.getInputFolder(), properties.getOutputFile());
+        if (properties.isRunOnStartup()) {
+            runScraper(properties.getInputFolder(), properties.getOutputFile());
+        }
     }
 
     public void runScraper() throws IOException {
@@ -72,24 +73,21 @@ public class ScraperService {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath.toFile(), StandardCharsets.UTF_8))) {
 
             // -------------------------------------------------------------
-            // 🧠 CHATGPT INTERPRETATION INSTRUCTIONS
+            // 🧠 CHATGPT INSTRUCTIONS
             // -------------------------------------------------------------
             writer.write("/*\n");
             writer.write(" * ChatGPT instructions:\n");
             writer.write(" * ---------------------\n");
-            writer.write(" * 1) The first section is the TREE STRUCTURE of the scanned folder.\n");
-            writer.write(" *    - It uses ├──, │   , and └── for folder/tree hierarchy.\n");
-            writer.write(" * 2) The second section contains the MERGED CONTENT of each file.\n");
-            writer.write(" *    - Every file begins with:   /* ==== absolute/path/to/file ==== */\n");
-            writer.write(" *    - After the file content, a separator appears:\n");
-            writer.write(" *         ------ next text file. ------\n");
-            writer.write(" * 3) Use this file for project analysis:\n");
-            writer.write(" *    - Read the tree to understand folder structure\n");
-            writer.write(" *    - Scroll to each header to inspect individual source files\n");
+            writer.write(" * 1) First section = TREE STRUCTURE (folders + files).\n");
+            writer.write(" * 2) Second section = MERGED FILE CONTENTS.\n");
+            writer.write(" *    Each file begins with:\n");
+            writer.write(" *       /* ==== absolute/path/to/file ==== */\n");
+            writer.write(" *    And ends with:\n");
+            writer.write(" *       ------ next text file. ------\n");
             writer.write(" */\n\n");
 
             // -------------------------------------------------------------
-            // HEADER SECTION
+            // HEADER
             // -------------------------------------------------------------
             writer.write("📂 Input folder: " + inputPath.toAbsolutePath() + "\n");
             writer.write("📄 Output file: " + outputPath.toAbsolutePath() + "\n");
@@ -101,31 +99,27 @@ public class ScraperService {
             writer.write("\n📦 Merged Content:\n\n");
 
             // -------------------------------------------------------------
-            // MERGE FILE CONTENTS WITH IMPROVED ERROR HANDLING
+            // MERGE CONTENT (SAFE NON-UTF8 HANDLING)
             // -------------------------------------------------------------
             for (Path file : collectedFiles) {
 
                 writer.write("/* ==== " + file.toAbsolutePath() + " ==== */\n");
                 System.out.println("📄 Reading: " + file.toAbsolutePath());
 
-                try (Stream<String> lines = Files.lines(file, StandardCharsets.UTF_8)) {
-
-                    lines.forEach(line -> {
-                        try {
-                            writer.write(line);
-                            writer.newLine();
-                        } catch (IOException e) {
-                            System.err.println("⚠️ Failed writing line from: " + file + " | " + e.getMessage());
-                        }
-                    });
+                try {
+                    List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+                    for (String line : lines) {
+                        writer.write(line);
+                        writer.newLine();
+                    }
 
                 } catch (MalformedInputException mie) {
-                    System.err.println("⚠️ Skipped unreadable file (encoding issue): " + file);
-                    writer.write("⚠️ [Skipped unreadable file due to malformed encoding]\n");
+                    System.err.println("⚠ Skipped non-UTF8 file: " + file);
+                    writer.write("⚠ [Skipped unreadable file: non-UTF8 encoding]\n");
 
                 } catch (IOException e) {
-                    System.err.println("⚠️ Error reading file: " + file + " | " + e.getMessage());
-                    writer.write("⚠️ [Error reading file: " + e.getMessage() + "]\n");
+                    System.err.println("⚠ Error reading file: " + file + " | " + e.getMessage());
+                    writer.write("⚠ [Error reading file: " + e.getMessage() + "]\n");
                 }
 
                 writer.write("\n------ next text file. ------\n\n");
@@ -138,7 +132,7 @@ public class ScraperService {
     }
 
     // -------------------------------------------------------------
-    // TREE-BUILDING HELPERS
+    // TREE HELPERS
     // -------------------------------------------------------------
 
     private void addToTree(Map<Path, List<FileNode>> map, Path path, boolean isDir, long size) {
