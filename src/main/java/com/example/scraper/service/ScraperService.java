@@ -10,10 +10,12 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -68,6 +70,27 @@ public class ScraperService {
         });
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputPath.toFile(), StandardCharsets.UTF_8))) {
+
+            // -------------------------------------------------------------
+            // 🧠 CHATGPT INTERPRETATION INSTRUCTIONS
+            // -------------------------------------------------------------
+            writer.write("/*\n");
+            writer.write(" * ChatGPT instructions:\n");
+            writer.write(" * ---------------------\n");
+            writer.write(" * 1) The first section is the TREE STRUCTURE of the scanned folder.\n");
+            writer.write(" *    - It uses ├──, │   , and └── for folder/tree hierarchy.\n");
+            writer.write(" * 2) The second section contains the MERGED CONTENT of each file.\n");
+            writer.write(" *    - Every file begins with:   /* ==== absolute/path/to/file ==== */\n");
+            writer.write(" *    - After the file content, a separator appears:\n");
+            writer.write(" *         ------ next text file. ------\n");
+            writer.write(" * 3) Use this file for project analysis:\n");
+            writer.write(" *    - Read the tree to understand folder structure\n");
+            writer.write(" *    - Scroll to each header to inspect individual source files\n");
+            writer.write(" */\n\n");
+
+            // -------------------------------------------------------------
+            // HEADER SECTION
+            // -------------------------------------------------------------
             writer.write("📂 Input folder: " + inputPath.toAbsolutePath() + "\n");
             writer.write("📄 Output file: " + outputPath.toAbsolutePath() + "\n");
             writer.write("🧾 Found " + collectedFiles.size() + " file(s).\n\n");
@@ -77,22 +100,46 @@ public class ScraperService {
 
             writer.write("\n📦 Merged Content:\n\n");
 
+            // -------------------------------------------------------------
+            // MERGE FILE CONTENTS WITH IMPROVED ERROR HANDLING
+            // -------------------------------------------------------------
             for (Path file : collectedFiles) {
+
                 writer.write("/* ==== " + file.toAbsolutePath() + " ==== */\n");
-                Files.lines(file, StandardCharsets.UTF_8).forEach(line -> {
-                    try {
-                        writer.write(line);
-                        writer.newLine();
-                    } catch (IOException e) {
-                        System.err.println("⚠️ Failed to write line: " + e.getMessage());
-                    }
-                });
+                System.out.println("📄 Reading: " + file.toAbsolutePath());
+
+                try (Stream<String> lines = Files.lines(file, StandardCharsets.UTF_8)) {
+
+                    lines.forEach(line -> {
+                        try {
+                            writer.write(line);
+                            writer.newLine();
+                        } catch (IOException e) {
+                            System.err.println("⚠️ Failed writing line from: " + file + " | " + e.getMessage());
+                        }
+                    });
+
+                } catch (MalformedInputException mie) {
+                    System.err.println("⚠️ Skipped unreadable file (encoding issue): " + file);
+                    writer.write("⚠️ [Skipped unreadable file due to malformed encoding]\n");
+
+                } catch (IOException e) {
+                    System.err.println("⚠️ Error reading file: " + file + " | " + e.getMessage());
+                    writer.write("⚠️ [Error reading file: " + e.getMessage() + "]\n");
+                }
+
                 writer.write("\n------ next text file. ------\n\n");
+                writer.flush();
             }
+
         }
 
         System.out.println("✅ Scraper completed.");
     }
+
+    // -------------------------------------------------------------
+    // TREE-BUILDING HELPERS
+    // -------------------------------------------------------------
 
     private void addToTree(Map<Path, List<FileNode>> map, Path path, boolean isDir, long size) {
         Path parent = path.getParent();
@@ -102,18 +149,25 @@ public class ScraperService {
 
     private boolean shouldInclude(Path path) {
         String filename = path.getFileName().toString().toLowerCase();
-        boolean matches = properties.getIncludeExtensions().stream()
+
+        boolean matchesExt = properties.getIncludeExtensions().stream()
                 .anyMatch(ext -> filename.endsWith("." + ext.toLowerCase()));
 
         boolean notExcludedFolder = properties.getExcludeFolders().stream()
-                .noneMatch(folder -> path.toString().toLowerCase().contains(FileSystems.getDefault().getSeparator() + folder.toLowerCase()));
+                .noneMatch(folder -> path.toString().toLowerCase()
+                        .contains(FileSystems.getDefault().getSeparator() + folder.toLowerCase()));
 
-        boolean notExcludedFile = properties.getExcludeFilePatterns().stream().noneMatch(p -> {
-            String regex = p.replace(".", "\\.").replace("*", ".*").replace("?", ".");
-            return filename.matches(properties.isExcludePatternCaseSensitive() ? regex : regex.toLowerCase());
-        });
+        boolean notExcludedFile = properties.getExcludeFilePatterns().stream()
+                .noneMatch(pattern -> {
+                    String regex = pattern.replace(".", "\\.")
+                            .replace("*", ".*")
+                            .replace("?", ".");
+                    return filename.matches(
+                            properties.isExcludePatternCaseSensitive() ? regex : regex.toLowerCase()
+                    );
+                });
 
-        return matches && notExcludedFolder && notExcludedFile;
+        return matchesExt && notExcludedFolder && notExcludedFile;
     }
 
     private boolean shouldExclude(Path dir) {
@@ -127,7 +181,9 @@ public class ScraperService {
         walkTree(writer, treeMap, root, 0, true, prefixStack);
     }
 
-    private void walkTree(BufferedWriter writer, Map<Path, List<FileNode>> map, Path current, int depth, boolean isLast, Deque<String> prefixStack) throws IOException {
+    private void walkTree(BufferedWriter writer, Map<Path, List<FileNode>> map, Path current,
+                          int depth, boolean isLast, Deque<String> prefixStack) throws IOException {
+
         List<FileNode> children = map.get(current);
         if (children == null) return;
 
@@ -136,8 +192,10 @@ public class ScraperService {
         for (int i = 0; i < children.size(); i++) {
             FileNode node = children.get(i);
             boolean last = (i == children.size() - 1);
+
             String treeLine = TreeGenerator.generateTree(List.of(), node, depth + 1, last);
             writer.write(treeLine);
+
             if (node.isDirectory()) {
                 prefixStack.push(last ? "    " : "│   ");
                 walkTree(writer, map, current.resolve(node.getName()), depth + 1, last, prefixStack);
