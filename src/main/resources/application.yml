@@ -64,6 +64,7 @@ scraper:
     - .vs
     - obj
     - .venv
+    - venv
     - public
     - .mvn
     - data
