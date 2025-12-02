@@ -39,9 +39,8 @@ scraper:
     - html
     - conf
     - env
-    - .env
-    - .container
-    - .env.container
+    - container
+    - env.container
     - prod
     - gitignore
     - h
