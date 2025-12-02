@@ -39,6 +39,9 @@ scraper:
     - html
     - conf
     - env
+    - .env
+    - .container
+    - .env.container
     - prod
     - gitignore
     - h
@@ -57,9 +60,13 @@ scraper:
     - target
     - bin
     - .git
+    - .github
     - node_modules
+    - .angular
+    - .nx
     - .next
     - .idea
+    - patches
     - .vscode
     - .vs
     - obj
